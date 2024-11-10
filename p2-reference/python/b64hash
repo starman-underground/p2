@@ -1,0 +1,20 @@
+#!/usr/bin/python3
+import hashlib
+import base64
+import sys
+
+## Example - compute a base64-encoded SHA-2 hash
+
+if len(sys.argv) != 2:
+    print("Usage: python b64hash.py <string_to_hash>")
+    sys.exit(1)
+
+# Get the input string from the command line
+input_string = sys.argv[1]
+
+# Compute the SHA-256 hash of the input string
+sha256_hash = hashlib.sha256(input_string.encode('utf-8')).digest()
+
+# Encode the hash in base64
+base64_hash = base64.b64encode(sha256_hash).decode('utf-8')
+print(f"Base64-encoded SHA-256 hash: {base64_hash}")
