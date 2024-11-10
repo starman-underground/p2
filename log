@@ -1,8 +1,17 @@
 #!/usr/bin/python3
-import socket
-import sys
+import socket, sys, hashlib, string, random, argparse
 
-def send_string_to_server(port, message):
+def generate_proof_of_work(message, zero_bits):
+    pow_chars = string.ascii_letters + string.digits
+    target = int(b"0" * min(zero_bits, 256) + b"1" * max(256 - zero_bits, 0), 2)
+    while True:
+        proof = ''.join(random.choice(pow_chars) for _ in range(5))
+        full_message = f"{proof}:{message}"
+        hash_result = hashlib.sha256(full_message.encode("utf-8")).hexdigest()
+        if int(hash_result, 16) < target:
+            return proof
+
+def send_string_to_server(port, message, zero_bits):
     try:
         # Connect to the server
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -12,10 +21,12 @@ def send_string_to_server(port, message):
         ### Convert any whitespace to spaces
         ### Modify the messsage to include the proof-of-work (Pow+':'+message)
         ######################
+        proof = generate_proof_of_work(message, zero_bits)
+        full_message = f"{proof}:{message}"
 
         with client_socket.makefile('r') as server_in, client_socket.makefile('w') as server_out:
             # Send the message to the server, terminated by a newline
-            server_out.write(message + "\n")
+            server_out.write(full_message + "\n")
             server_out.flush()
 
             # Receive and print the confirmation message from the server
@@ -28,10 +39,15 @@ def send_string_to_server(port, message):
         client_socket.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: log <port> <message>")
-    else:
-        port = int(sys.argv[1])
-        message = sys.argv[2]
-        send_string_to_server(port, message)
+    parser = argparse.ArgumentParser(description="Send a log message to the server.")
+    parser.add_argument("port", type=int, help="The port number of the log server.")
+    parser.add_argument("message", type=str, help="The message to be logged.")
+    parser.add_argument("-b", "--bits", type=int, default=20, help="Minimum number of leading zero bits for proof of work. (Default: 20)")
 
+    args = parser.parse_args()
+
+    if args.bits < 1 or args.bits > 256:
+        print("Error: Number of bits must be at least 1 and at most 256.")
+        sys.exit(1)
+
+    send_string_to_server(args.port, ' '.join(args.message.split()), args.bits)
